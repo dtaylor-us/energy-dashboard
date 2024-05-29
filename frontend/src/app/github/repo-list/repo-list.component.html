@@ -1,0 +1,8 @@
+<input placeholder="GitHub Username" type="text" pInputText [(ngModel)]="username" />
+
+<button pButton class="ml1" label="Get Repos" (click)="fetchRepos()"></button>
+
+<!-- Display the repos here -->
+<ul>
+  <li *ngFor="let repo of repos">{{ repo.name }}</li>
+</ul>

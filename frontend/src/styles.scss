@@ -1,0 +1,13 @@
+
+/* You can add global styles to this file */
+
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+.icon-with-text {
+  display: flex;
+  align-items: center;
+
+  /* Optional: Add some space between the icon and text */
+  gap: 0.5rem;
+}
