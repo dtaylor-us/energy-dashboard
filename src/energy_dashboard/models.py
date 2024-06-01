@@ -14,6 +14,8 @@ class LLMModel(str, Enum):
 class SqlSelectQuery(BaseModel):
     select_stmt: str = Field(..., description="The select statement for the query")
     explain_stmt: str = Field(..., description="The explain statement for the query")
+    start_date: str = Field(..., description="The start date for the data")
+    end_date: str = Field(..., description="The end date for the data")
 
 
 class EnergyData(BaseModel):

@@ -1,14 +1,8 @@
 import asyncio
 import logging
-import math
 from typing import Annotated, Dict, List, AsyncGenerator
 
 import httpx
-import pandas as pd
-from bokeh.embed import components
-from bokeh.models import ColumnDataSource
-from bokeh.models import NumeralTickFormatter, DatetimeTickFormatter, HoverTool, Range1d
-from bokeh.plotting import figure
 from fastapi import APIRouter, Depends, FastAPI, Request, Query, Form
 from fastapi import Body
 from fastapi.exceptions import RequestValidationError
@@ -26,6 +20,10 @@ from energy_dashboard.models import (
 )
 from energy_dashboard.services import EnergyDataService
 from energy_dashboard.utils import TEMPLATES_DIR
+from energy_dashboard.chart import (
+    create_chart,
+    create_context,
+)
 
 
 # Configure logging
@@ -121,17 +119,14 @@ async def instruct_stream_chart(
             content={"message": "Prompt must be provided"},
         )
 
-    def render_chunk(event: str, chunk: str, attrs: Dict):
-        chunk = render_sse_html_chunk(
-            event,
-            chunk,
-            attrs=attrs,
-        )
-        return f"{chunk}\n\n".encode("utf-8")
-
     async def streaming_data(prompt: str):
+        chart_state = {
+            "x_state": [],
+            "y_state": [],
+        }
+
         nrgstrm = service.stream_all_from_prompt(prompt)
-        async for energy_data in nrgstrm:
+        async for energy_data, query in nrgstrm:
             log.info(f"Sending {energy_data} to client...")
             if energy_data is None:
                 yield render_chunk(
@@ -141,9 +136,13 @@ async def instruct_stream_chart(
                 )
                 await nrgstrm.aclose()
             else:
+                chart_state["y_state"].append(energy_data.value)
+                chart_state["x_state"].append(energy_data.period)
+                div, script = create_chart(chart_state, query)
+                context = create_context(div, script)
                 yield render_chunk(
                     CHART_TOPIC,
-                    energy_data,
+                    context,
                     attrs={"id": "linechart", "hx-swap-oob": "true"},
                 )
                 await asyncio.sleep(2)
@@ -172,21 +171,6 @@ async def energy_stream(
         end_date=end_date,
     )
 
-    def create_context(div, script):
-        context = {
-            "script": script.replace("\n", " "),
-            "div": div.replace("\n", " "),
-        }
-        return context
-
-    def render_chunk(event: str, context: Dict, attrs: Dict):
-        chunk = render_sse_html_chunk(
-            event,
-            context,
-            attrs=attrs,
-        )
-        return f"{chunk}\n\n".encode("utf-8")
-
     async def streaming_data(chart_params=params):
         chart_state = {
             "x_state": [],
@@ -206,7 +190,7 @@ async def energy_stream(
             else:
                 chart_state["y_state"].append(energy_data.value)
                 chart_state["x_state"].append(energy_data.period)
-                div, script = create_chart(chart_state)
+                div, script = create_chart(chart_state, params)
                 context = create_context(div, script)
                 yield render_chunk(
                     CHART_TOPIC,
@@ -215,73 +199,16 @@ async def energy_stream(
                 )
                 await asyncio.sleep(2)
 
-    def prepare_data(chart_state):
-        values = [value for value in chart_state["y_state"]]
-        hours = [period for period in chart_state["x_state"]]
-        source = ColumnDataSource(data=dict(hours=hours, values=values))
-        return source
-
-    def create_figure(hours):
-        fig = figure(
-            x_axis_type="datetime",
-            height=500,
-            tools="xpan",
-            width=1250,
-            title=f"MISO - Hour: {max(hours)}",
-        )
-        return fig
-
-    def format_figure(fig):
-        fig.title.align = "left"
-        fig.title.text_font_size = "1em"
-        fig.yaxis[0].formatter = NumeralTickFormatter(format="0.0a")
-        fig.yaxis.axis_label = "Megawatt Hours"
-        fig.y_range.start = 50000
-        fig.y_range.end = 125000
-        fig.xaxis.major_label_orientation = math.pi / 4
-
-        # Convert start_date and end_date from string to datetime
-        fig.x_range = Range1d(
-            start=pd.Timestamp(params.start_date), end=pd.Timestamp(params.end_date)
-        )
-
-        fig.xaxis.ticker.desired_num_ticks = 24
-        fig.xaxis.formatter = DatetimeTickFormatter(
-            days="%m/%d/%Y, %H:%M:%S",  # Format for day-level ticks
-            hours="%m/%d/%Y, %H:%M:%S",  # Format for hour-level ticks
-        )
-        return fig
-
-    def add_line_and_hover(fig, source):
-        fig.line(
-            x="hours",
-            y="values",
-            source=source,
-            line_width=2,
-        )
-        hover = HoverTool(
-            tooltips=[
-                ("Value", "@values{0.00}"),
-                ("Hours", "@hours{%F %T}"),
-            ],
-            formatters={
-                "@hours": "datetime",
-            },
-            mode="vline",
-            show_arrow=False,
-        )
-        fig.add_tools(hover)
-        return fig
-
-    def create_chart(chart_state: Dict):
-        source = prepare_data(chart_state)
-        fig = create_figure(chart_state["x_state"])
-        fig = format_figure(fig)
-        fig = add_line_and_hover(fig, source)
-        script, div = components(fig)
-        return div, script
-
     return StreamingResponse(streaming_data(), media_type="text/event-stream")
+
+
+def render_chunk(event: str, context: Dict, attrs: Dict):
+    chunk = render_sse_html_chunk(
+        event,
+        context,
+        attrs=attrs,
+    )
+    return f"{chunk}\n\n".encode("utf-8")
 
 
 async def buffer_stream(

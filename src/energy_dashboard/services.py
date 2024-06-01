@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql.ddl import CreateTable
 
 from .database import EnergyDataTable, database, engine, get_energy_data_schema
-from .models import EnergyData, StreamChartDataRequest
+from .models import EnergyData, StreamChartDataRequest, SqlSelectQuery
 from .utils import URLBuilder
 from .llm import gen_async_client, streaming_gen_select_query
 
@@ -98,7 +98,7 @@ class EnergyDataService:
 
     async def stream_all_from_prompt(
         self, prompt: str, row_count=10
-    ) -> AsyncGenerator[EnergyData, None]:
+    ) -> AsyncGenerator[tuple[EnergyData, SqlSelectQuery], None]:
         """
         Perform select query on the EnergyDataTable table from the prompt
         """
@@ -110,17 +110,12 @@ class EnergyDataService:
             stream_results=True, max_row_buffer=row_count
         )
         rows = await self.async_db.stream(stmt)
-        buffer = []
         columns = [clmn.description for clmn in EnergyDataTable.__table__.columns]
         async for row in rows:
             row_data = dict(zip(columns, row))
             data = EnergyData.model_validate(row_data)
-            buffer.append(data)
-            if len(buffer) >= row_count:
-                yield buffer
-                buffer = []
-        if buffer:
-            yield buffer
+            yield data, query
+        yield None
 
     async def stream_all(
         self, chart_params: StreamChartDataRequest, row_count=10
