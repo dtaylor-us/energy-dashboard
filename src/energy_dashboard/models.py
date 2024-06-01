@@ -30,5 +30,5 @@ class RetrieveEnergyDataRequest(BaseModel):
     end_date: str
 
 
-class EnergyDataRequest(BaseModel):
+class SeedEnergyDataRequest(BaseModel):
     params: Dict[str, Any]

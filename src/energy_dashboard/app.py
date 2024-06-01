@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from energy_dashboard.database import AsyncSessionLocal, SessionLocal
-from energy_dashboard.models import SeedEnergyDataRequest, RetrieveEnergyDataRequest
+from energy_dashboard.models import RetrieveEnergyDataRequest, SeedEnergyDataRequest
 from energy_dashboard.services import EnergyDataService
 from energy_dashboard.utils import TEMPLATES_DIR
 
@@ -255,7 +255,7 @@ async def index(request: Request):
 
 @app.post("/api/v1/seed-data/")
 async def seed_energy_data(
-        request_body: EnergyDataRequest = Body(...),
+        request_body: SeedEnergyDataRequest = Body(...),
         service: EnergyDataService = Depends(get_energy_service),
 ):
     return await service.fetch_data(params=request_body.params)
