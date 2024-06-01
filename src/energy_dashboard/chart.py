@@ -7,7 +7,7 @@ import pandas as pd
 from bokeh.embed import components
 from bokeh.models import ColumnDataSource
 from bokeh.models import NumeralTickFormatter, DatetimeTickFormatter, HoverTool, Range1d
-from bokeh.plotting import figure
+from bokeh.plotting import figure, curdoc
 
 from energy_dashboard.models import RetrieveEnergyDataRequest
 
@@ -27,13 +27,13 @@ def prepare_data(chart_state):
     return source
 
 
-def create_figure(hours):
+def create_figure(hours, title):
     fig = figure(
         x_axis_type="datetime",
         height=500,
         tools="xpan",
         width=1250,
-        title=f"MISO - Hour: {max(hours)}",
+        title=f"{title}: {max(hours)}",
     )
     return fig
 
@@ -82,9 +82,10 @@ def add_line_and_hover(fig, source):
     return fig
 
 
-def create_chart(chart_state: Dict, params: RetrieveEnergyDataRequest):
+def create_chart(chart_state: Dict, params: RetrieveEnergyDataRequest, title="Chart Title"):
+    curdoc().theme = "dark_minimal"
     source = prepare_data(chart_state)
-    fig = create_figure(chart_state["x_state"])
+    fig = create_figure(chart_state["x_state"], title=title)
     fig = format_figure(fig, params)
     fig = add_line_and_hover(fig, source)
     script, div = components(fig)

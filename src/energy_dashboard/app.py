@@ -152,7 +152,7 @@ async def instruct_stream_chart(
             else:
                 chart_state["y_state"].append(energy_data.value)
                 chart_state["x_state"].append(energy_data.period)
-                div, script = create_chart(chart_state, query)
+                div, script = create_chart(chart_state, query, title=prompt)
                 context = create_context(div, script)
                 yield render_chunk(
                     CHART_TOPIC,
@@ -205,7 +205,7 @@ async def energy_stream(
             else:
                 chart_state["y_state"].append(energy_data.value)
                 chart_state["x_state"].append(energy_data.period)
-                div, script = create_chart(chart_state, params)
+                div, script = create_chart(chart_state, params, title=respondent)
                 context = create_context(div, script)
                 yield render_chunk(
                     CHART_TOPIC,
