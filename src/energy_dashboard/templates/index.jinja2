@@ -11,7 +11,7 @@
             {{ sse_stream(sse_config) }}
         {% endif %}
 
-        <form action="/trigger-streaming" method="POST" class="mt-4">
+        <form action="{{ url_for('trigger_streaming') }}" method="POST" class="mt-4">
             {% include 'partials/form.jinja2' %}
         </form>
 

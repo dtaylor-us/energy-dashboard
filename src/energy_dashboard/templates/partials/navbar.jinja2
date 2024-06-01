@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="{{ url_for('index') }}">
-            <i class="bi bi-lightning-charge-fill me-2" style="color: #0cf834;"></i>Energy Dashboard
+            <i class="bi bi-lightning-charge-fill me-2"></i>Energy Dashboard
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -12,9 +12,9 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('index') }}">Home</a>
                 </li>
-{#                <li class="nav-item">#}
-{#                    <a class="nav-link" href="{{ url_for('fast_api') }}">Home</a>#}
-{#                </li>#}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('instruct') }}">Instruct (with LLM Energy)</a>
+                </li>
             </ul>
         </div>
     </div>

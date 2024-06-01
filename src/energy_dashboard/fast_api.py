@@ -39,13 +39,13 @@ def get_db():
 
 # Dependency function to get an instance of EnergyDataService
 def get_energy_service(
-        db: Session = Depends(get_db), async_db: AsyncSession = Depends(get_async_db)
+    db: Session = Depends(get_db), async_db: AsyncSession = Depends(get_async_db)
 ):
     return EnergyDataService(async_db, db, httpx.AsyncClient())
 
 
 def app_context(request: Request) -> typing.Dict[str, typing.Any]:
-    return {'app': request.app}
+    return {"app": request.app}
 
 
 templates = Jinja2Templates(
@@ -56,29 +56,30 @@ templates = Jinja2Templates(
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(
-        request=request, name="fast_api.jinja2",
+        request=request,
+        name="fast_api.jinja2",
     )
 
 
 def app_context(request: Request) -> typing.Dict[str, typing.Any]:
-    return {'app': request.app}
+    return {"app": request.app}
 
 
 @app.get("/energy_data", name="energy_data", response_class=HTMLResponse)
 async def get_energy_data(
-        request: Request,
-        respondent: str = Query(...),
-        category: str = Query(...),
-        start_date: str = Query(...),
-        end_date: str = Query(...),
-        service: EnergyDataService = Depends(get_energy_service)
+    request: Request,
+    respondent: str = Query(...),
+    type_name: str = Query(...),
+    start_date: str = Query(...),
+    end_date: str = Query(...),
+    service: EnergyDataService = Depends(get_energy_service),
 ):
     """
     Endpoint to get energy data based on the provided parameters.
 
     Parameters:
     respondent (str): The respondent for the data entry.
-    category (str): The category of the data entry.
+    type_name (str): The type_name of the data entry.
     start_date (str): The start date for the data entry.
     end_date (str): The end date for the data entry.
     service (EnergyDataService): The service to fetch the data.
@@ -87,7 +88,7 @@ async def get_energy_data(
     JSONResponse: The energy data.
     """
 
-    if not all([respondent, category, start_date, end_date]):
+    if not all([respondent, type_name, start_date, end_date]):
         return JSONResponse(
             status_code=400,
             content={"message": "All parameters must be provided"},
@@ -95,7 +96,7 @@ async def get_energy_data(
 
     params = RetrieveEnergyDataRequest(
         respondent=respondent,
-        category=category,
+        type_name=type_name,
         start_date=start_date,
         end_date=end_date,
     )
@@ -109,7 +110,11 @@ async def get_energy_data(
     )
 
 
-@app.get("/api/v1/stream-energy-data", name="stream-energy-data", response_class=StreamingResponse)
+@app.get(
+    "/api/v1/stream-energy-data",
+    name="stream-energy-data",
+    response_class=StreamingResponse,
+)
 async def stream_energy_data(service: EnergyDataService = Depends(get_energy_service)):
     """
     Stream the energy data as Server-Sent Events (SSE).
@@ -131,8 +136,10 @@ async def stream_energy_data(service: EnergyDataService = Depends(get_energy_ser
 
 
 @app.post("/api/v1/seed-data/")
-async def seed_energy_data(request_body: SeedEnergyDataRequest = Body(...),
-                           service: EnergyDataService = Depends(get_energy_service)):
+async def seed_energy_data(
+    request_body: SeedEnergyDataRequest = Body(...),
+    service: EnergyDataService = Depends(get_energy_service),
+):
     """
     Endpoint to seed energy data based on the provided parameters.
 
@@ -156,7 +163,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run('fast_api:app', host='0.0.0.0', port=6543, reload=True)
+    uvicorn.run("fast_api:app", host="0.0.0.0", port=6543, reload=True)

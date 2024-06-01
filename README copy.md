@@ -717,7 +717,7 @@ async def energy_stream(
 
     params = RetrieveEnergyDataRequest(
         respondent=respondent,
-        category=category,
+        type_name=category,
         start_date=start_date,
         end_date=end_date,
     )
@@ -1014,7 +1014,7 @@ class EnergyDataService:
                         EnergyDataTable.respondent == params.respondent,
                         EnergyDataTable.period >= start_date,
                         EnergyDataTable.period <= end_date,
-                        EnergyDataTable.type_name == params.category.value,
+                        EnergyDataTable.type_name == params.type_name.value,
                     )
                 )
                 .order_by(EnergyDataTable.respondent, EnergyDataTable.period)

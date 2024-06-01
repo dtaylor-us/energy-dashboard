@@ -19,7 +19,13 @@ session = SessionLocal()
 
 def sync_main():
     # Fetch data synchronously
-    sync_data = session.query(EnergyDataTable).where(EnergyDataTable.respondent == "MISO").order_by().limit(24).all()
+    sync_data = (
+        session.query(EnergyDataTable)
+        .where(EnergyDataTable.respondent == "MISO")
+        .order_by()
+        .limit(24)
+        .all()
+    )
 
     # Print the data all at once after it is fetched
     print("Synchronous Data:")
@@ -28,11 +34,13 @@ def sync_main():
 
 
 async def fetch_data(async_session_local, order):
-    result = await async_session_local().execute(select(EnergyDataTable)
-                                                 .where(EnergyDataTable.respondent == "MISO")
-                                                 .order_by()
-                                                 .limit(24)
-                                                 .offset(order * 24))
+    result = await async_session_local().execute(
+        select(EnergyDataTable)
+        .where(EnergyDataTable.respondent == "MISO")
+        .order_by()
+        .limit(24)
+        .offset(order * 24)
+    )
     async_data = result.scalars().all()
 
     # Return the data as a list

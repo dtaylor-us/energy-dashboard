@@ -1,10 +1,29 @@
+
+import logging
+from pathlib import Path
+
 from databases import Database
-from sqlalchemy import Column, Integer, String, Float, DateTime, MetaData, create_engine, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    DateTime,
+    MetaData,
+    create_engine,
+    UniqueConstraint,
+)
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql.ddl import CreateTable
 
 from energy_dashboard.utils import ROOT_DIR
+
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 # Define the URL for the SQLite database
 ASYNC_DATABASE_URL = f"sqlite+aiosqlite:///{ROOT_DIR}/energy.db"
@@ -56,3 +75,12 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create the tables defined in the metadata
 Base.metadata.create_all(engine)
+
+
+def get_energy_data_schema() -> str:
+    """
+    Get the schema of the Database
+    """
+    schema_ddl = CreateTable(EnergyDataTable.__table__).compile(engine)
+    log.info(schema_ddl)
+    return schema_ddl

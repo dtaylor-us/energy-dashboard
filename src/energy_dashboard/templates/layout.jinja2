@@ -23,6 +23,25 @@
 
     {% block head %}{% endblock %}
 
+    <!-- Custom CSS for Light/Dark mode -->
+    {#
+    <style>
+        /* Light mode styles */
+        body {
+            background-color: #fff;
+            color: #333;
+        }
+
+        /* Dark mode styles */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #333;
+                color: #fff;
+            }
+        }
+    </style>
+    #}
+
 </head>
 <body hx-boost="true">
 {% include 'partials/navbar.jinja2' %}
