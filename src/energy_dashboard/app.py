@@ -239,7 +239,7 @@ async def buffer_stream(
         service: EnergyDataService,
         chart_params: RetrieveEnergyDataRequest,
         row_count=BUFFER_SIZE,
-) -> AsyncGenerator[List[EnergyData], None]:
+) -> AsyncGenerator[List[RetrieveEnergyDataRequest], None]:
     nrgstream = service.stream_all(row_count, chart_params)
     async for energy_data in nrgstream:
         for data in energy_data:

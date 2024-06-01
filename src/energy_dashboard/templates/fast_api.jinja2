@@ -1,11 +1,8 @@
 {% extends 'layout.jinja2' %}
-{% from "partials/sse.jinja2" import sse_stream %}
 
 {% block body %}
     <div class="container mt-4">
         <h1 class="h3">Fast API Example</h1>
-
-        {#   Visualization Container     #}
 
         <form action="/energy_data" method="GET" class="mt-4">
             {% include 'partials/form.jinja2' %}

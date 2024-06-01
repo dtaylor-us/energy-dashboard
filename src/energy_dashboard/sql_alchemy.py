@@ -1,6 +1,5 @@
 import asyncio
 import threading
-import time
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
