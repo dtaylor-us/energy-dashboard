@@ -1,0 +1,14 @@
+resource_group_name = "your_resource_group_name"
+location            = "East US"
+vnet_name           = "your_vnet_name"
+vnet_address_space  = ["10.0.0.0/16"]
+subnet_name         = "your_subnet_name"
+subnet_prefixes     = ["10.0.1.0/24"]
+vm_name             = "your_vm_name"
+vm_size             = "Standard_DS1_v2"
+admin_username      = "adminuser"
+public_key_path     = "path_to_your_public_ssh_key"
+image_publisher     = "Canonical"
+image_offer         = "UbuntuServer"
+image_sku           = "18.04-LTS"
+image_version       = "latest"
