@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import math
-from typing import Annotated
+from typing import Annotated, Dict, List, AsyncGenerator
 
 import httpx
 import pandas as pd
@@ -18,11 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from energy_dashboard.database import AsyncSessionLocal, SessionLocal
-from energy_dashboard.models import EnergyDataRequest, StreamChartDataRequest
+from energy_dashboard.models import EnergyDataRequest, StreamChartDataRequest, EnergyData
 from energy_dashboard.services import EnergyDataService
 from energy_dashboard.utils import TEMPLATES_DIR
 
+HX_SSE_LISTENER = "hx-sse-listener"
 CHART_TOPIC = "chart"
+TERMINATE = "Terminate"
 
 BUFFER_SIZE = 10
 
@@ -91,9 +93,9 @@ async def trigger_streaming(
     end_date: Annotated[str, Form()],
 ):
     sse_config = dict(
-        listener="hx-sse-listener",
+        listener=HX_SSE_LISTENER,
         path=f"/stream-chart?respondent={respondent}&type_name={type_name}&start_date={start_date}&end_date={end_date}",
-        topics=[CHART_TOPIC, "Terminate"],
+        topics=[CHART_TOPIC, TERMINATE],
     )
     return templates.TemplateResponse(
         "index.jinja2", {"request": request, "sse_config": sse_config}
@@ -121,19 +123,14 @@ async def energy_stream(
         end_date=end_date,
     )
 
-    async def update_chart_state(energy_data, chart_state):
-        chart_state["y_state"].extend([data.value for data in energy_data])
-        chart_state["x_state"].extend([data.period for data in energy_data])
-        return chart_state
-
-    async def create_context(div, script):
+    def create_context(div, script):
         context = {
             "script": script.replace("\n", " "),
             "div": div.replace("\n", " "),
         }
         return context
 
-    def render_chunk(event, context, attrs):
+    def render_chunk(event: str, context: Dict, attrs: Dict):
         chunk = render_sse_html_chunk(
             event,
             context,
@@ -141,30 +138,27 @@ async def energy_stream(
         )
         return f"{chunk}\n\n".encode("utf-8")
 
-    async def handle_termination_condition(energy_data):
-        if energy_data is None or len(energy_data) < BUFFER_SIZE:
-            return True
-        return False
-
     async def streaming_data(chart_params=params):
         chart_state = {
             "x_state": [],
             "y_state": [],
         }
 
-        async for energy_data in buffer_stream(service, chart_params):
-            print(f"Received {len(energy_data)} records")
-            chart_state = await update_chart_state(energy_data, chart_state)
-            div, script = await create_chart(chart_state)
-            context = await create_context(div, script)
-            if await handle_termination_condition(energy_data):
+        nrgstrm = buffer_stream(service, chart_params)
+        async for energy_data in nrgstrm:
+            print(f"Sending {energy_data} to client...")
+            if energy_data is None:
                 yield render_chunk(
-                    "Terminate",
-                    "",
-                    attrs={"id": "hx-sse-listener", "hx-swap-oob": "true"},
+                    TERMINATE,
+                    None,
+                    attrs={"id": HX_SSE_LISTENER, "hx-swap-oob": "true"},
                 )
-                break
+                nrgstrm.aclose()
             else:
+                chart_state["y_state"].append(energy_data.value)
+                chart_state["x_state"].append(energy_data.period)
+                div, script = create_chart(chart_state)
+                context = create_context(div, script)
                 yield render_chunk(
                     CHART_TOPIC,
                     context,
@@ -230,7 +224,7 @@ async def energy_stream(
         fig.add_tools(hover)
         return fig
 
-    async def create_chart(chart_state):
+    def create_chart(chart_state: Dict):
         source = prepare_data(chart_state)
         fig = create_figure(chart_state["x_state"])
         fig = format_figure(fig)
@@ -245,16 +239,12 @@ async def buffer_stream(
     service: EnergyDataService,
     chart_params: StreamChartDataRequest,
     row_count=BUFFER_SIZE,
-):
-    buffer = []
-    async for energy_data in service.stream_all(row_count, chart_params):
+) -> AsyncGenerator[List[EnergyData], None]:
+    nrgstream = service.stream_all(row_count, chart_params)
+    async for energy_data in nrgstream:
         for data in energy_data:
-            buffer.append(data)
-        if len(buffer) >= BUFFER_SIZE:
-            yield buffer
-            buffer = []
-    if buffer:
-        yield buffer
+            yield data
+    yield None
 
 
 @app.get("/", name="index")
