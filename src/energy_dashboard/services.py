@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from .database import EnergyDataTable, database
-from .models import EnergyData, StreamChartDataRequest
+from .models import EnergyData, RetrieveEnergyDataRequest
 from .utils import URLBuilder
 
 load_dotenv()
@@ -81,22 +81,25 @@ class EnergyDataService:
 
         return data
 
-    def list_all(self):
+    async def list_all(self, count=None, params=None):
         """
-        Return all rows from the EnergyDataTable
-        Filter out the US48 respondent
+        Return rows from the EnergyDataTable based on the provided parameters.
+        Filter out the US48 respondent by default.
         """
-        return (
-            self.db.query(EnergyDataTable)
-            .filter(EnergyDataTable.respondent != "US48")
-            .order_by(EnergyDataTable.respondent, EnergyDataTable.period)
-            .all()
-        )
+        # Prepare the SQL statement
+        stmt = await self.prepare_stmt(params, count)
+
+        # Execute the query and return the result
+        result = await self.async_db.execute(stmt)
+        rows = result.scalars().all()
+        return [self.row_to_dict(row) for row in rows]
 
     async def stream_all(
-        self, row_count=10, chart_params: StreamChartDataRequest = None
+            self, row_count=10, chart_params: RetrieveEnergyDataRequest = None
     ) -> AsyncGenerator[EnergyData, None]:
         stmt = await self.prepare_stmt(chart_params, row_count)
+        stmt.execution_options(stream_results=True, max_row_buffer=row_count)
+
         results_stream = await self.async_db.stream(stmt)
         buffer = []
         async for partition in results_stream.partitions(row_count):
@@ -112,7 +115,7 @@ class EnergyDataService:
             yield buffer
 
     @staticmethod
-    async def prepare_stmt(params: StreamChartDataRequest, row_count):
+    async def prepare_stmt(params: RetrieveEnergyDataRequest, row_count):
         if params:
             # Convert start_date and end_date from string to datetime
             try:
@@ -131,19 +134,18 @@ class EnergyDataService:
                         EnergyDataTable.respondent == params.respondent,
                         EnergyDataTable.period >= start_date,
                         EnergyDataTable.period <= end_date,
-                        EnergyDataTable.type_name == params.type_name.value,
+                        EnergyDataTable.type_name == params.category.value,
                     )
                 )
                 .order_by(EnergyDataTable.respondent, EnergyDataTable.period)
-                .execution_options(stream_results=True, max_row_buffer=row_count)
             )
         else:
             stmt = (
                 select(EnergyDataTable)
                 .filter(EnergyDataTable.respondent != "US48")
                 .order_by(EnergyDataTable.respondent, EnergyDataTable.period)
-                .execution_options(stream_results=True, max_row_buffer=row_count)
             )
+
         return stmt
 
     @staticmethod

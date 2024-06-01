@@ -1,7 +1,5 @@
-from pathlib import Path
-
 from databases import Database
-from sqlalchemy import Column, Integer, String, Float, DateTime, MetaData, create_engine
+from sqlalchemy import Column, Integer, String, Float, DateTime, MetaData, create_engine, UniqueConstraint
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -35,9 +33,9 @@ class EnergyDataTable(Base):
     value_units = Column(String, nullable=True)
 
     __table_args__ = (
-        # UniqueConstraint(
-        #     "period", "respondent", "type", name="uix_period_respondent_type"
-        # ),
+        UniqueConstraint(
+            "period", "respondent", "type", name="uix_period_respondent_type"
+        ),
     )
 
     def __repr__(self):
@@ -45,7 +43,7 @@ class EnergyDataTable(Base):
 
 
 # Create an engine instance using the DATABASE_URL
-
+# TODO: Highlight the async and sync sessions
 ## Async engine for async queries (https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html)
 async_engine = create_async_engine(ASYNC_DATABASE_URL, echo=True)
 AsyncSessionLocal = async_sessionmaker(

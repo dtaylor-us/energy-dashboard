@@ -1,0 +1,40 @@
+{% extends 'layout.jinja2' %}
+{% from "partials/sse.jinja2" import sse_stream %}
+
+{% block body %}
+    <div class="container mt-4">
+        <h1 class="h3">Fast API Example</h1>
+
+        {#   Visualization Container     #}
+
+        <form action="/energy_data" method="GET" class="mt-4">
+            {% include 'partials/form.jinja2' %}
+        </form>
+
+        <table class="table mt-4">
+            <thead>
+            <tr>
+                <th scope="col">Period</th>
+                <th scope="col">Respondent</th>
+                <th scope="col">Respondent Name</th>
+                <th scope="col">Type</th>
+                <th scope="col">Value</th>
+                <th scope="col">Units</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for data in energy_data %}
+                <tr>
+                    <td>{{ data.period }}</td>
+                    <td>{{ data.respondent }}</td>
+                    <td>{{ data.respondent_name }}</td>
+                    <td>{{ data.type_name }}</td>
+                    <td>{{ data.value }}</td>
+                    <td>MWh</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+{% endblock %}

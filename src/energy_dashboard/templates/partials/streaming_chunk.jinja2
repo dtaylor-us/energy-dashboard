@@ -1,2 +1,3 @@
+{# TODO: Highlight the importance of this partial, walk through the event #}
 event: {{ event }}
 data: <div {% for name, value in attrs.items() %} {{ name }}="{{ value }}" {% endfor %}>{{ chunk.div | safe }} {{ chunk.script | safe }} </div>

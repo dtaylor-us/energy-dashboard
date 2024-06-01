@@ -6,43 +6,18 @@
         <h1 class="h3">Dashboard</h1>
 
         {#   Visualization Container     #}
+        {# TODO: Highlight that the listener div will be rendered here.     #}
         {% if sse_config %}
             {{ sse_stream(sse_config) }}
         {% endif %}
 
         <form action="/trigger-streaming" method="POST" class="mt-4">
-            <div class="row">
-                <div class="col">
-                    <label for="respondent" class="form-label">Respondent</label>
-                    <select id="respondent" name="respondent" class="form-select" required>
-                        <!-- Options for respondent -->
-                        <option value="MISO" selected>MISO</option>
-                    </select>
-                </div>
-                <div class="col">
-                    <label for="type_name" class="form-label">Type</label>
-                    <select id="type_name" name="type_name" class="form-select">
-                        <option value="Demand" selected>Demand</option>
-                        <!-- Other options for type -->
-                    </select>
-                </div>
-                <div class="col">
-                    <label for="start-date" class="form-label">Start Date</label>
-                    <input type="date" id="start-date" name="start_date" class="form-control" min="2023-01-01"
-                           max="2023-12-31" required>
-                </div>
-                <div class="col">
-                    <label for="end-date" class="form-label">End Date</label>
-                    <input type="date" id="end-date" name="end_date" class="form-control" min="2023-01-01"
-                           max="2023-12-31" required>
-                </div>
-                <div class="col d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary">Start Streaming</button>
-                </div>
-            </div>
+            {% include 'partials/form.jinja2' %}
         </form>
 
+
         <div class="container mt-5" style="margin-left: -25px">
+            {#   TODO: Highlight Targeting this div for swap     #}
             <div id="linechart"></div>
         </div>
 

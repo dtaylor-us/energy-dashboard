@@ -31,6 +31,9 @@ click==8.1.7
     # via uvicorn
 contourpy==1.2.1
     # via bokeh
+    # via matplotlib
+cycler==0.12.1
+    # via matplotlib
 databases==0.9.0
     # via energy-dashboard
 dnspython==2.6.1
@@ -42,6 +45,8 @@ fastapi==0.111.0
     # via fastapi-cli
 fastapi-cli==0.0.3
     # via fastapi
+fonttools==4.52.4
+    # via matplotlib
 greenlet==3.0.3
     # via sqlalchemy
 h11==0.14.0
@@ -64,6 +69,8 @@ jinja2==3.1.4
     # via bokeh
     # via energy-dashboard
     # via fastapi
+kiwisolver==1.4.5
+    # via matplotlib
 mako==1.3.5
     # via alembic
 markdown-it-py==3.0.0
@@ -71,22 +78,27 @@ markdown-it-py==3.0.0
 markupsafe==2.1.5
     # via jinja2
     # via mako
+matplotlib==3.9.0
+    # via energy-dashboard
 mdurl==0.1.2
     # via markdown-it-py
 numpy==1.26.4
     # via bokeh
     # via contourpy
+    # via matplotlib
     # via pandas
 orjson==3.10.3
     # via fastapi
 packaging==24.0
     # via bokeh
+    # via matplotlib
     # via pytest
 pandas==2.2.2
     # via bokeh
     # via energy-dashboard
 pillow==10.3.0
     # via bokeh
+    # via matplotlib
 pluggy==1.5.0
     # via pytest
 pydantic==2.7.1
@@ -95,12 +107,15 @@ pydantic-core==2.18.2
     # via pydantic
 pygments==2.18.0
     # via rich
+pyparsing==3.1.2
+    # via matplotlib
 pytest==8.2.0
     # via energy-dashboard
     # via pytest-asyncio
 pytest-asyncio==0.23.7
     # via energy-dashboard
 python-dateutil==2.9.0.post0
+    # via matplotlib
     # via pandas
 python-dotenv==1.0.1
     # via uvicorn

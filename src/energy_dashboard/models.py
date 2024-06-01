@@ -23,11 +23,11 @@ class EnergyType(str, Enum):
     NG = "Generation"
 
 
-class StreamChartDataRequest(BaseModel):
-    respondent: str = Field(..., description="The respondent for the data")
-    type_name: EnergyType = Field(..., description="The category of the data")
-    start_date: str = Field(..., description="The start date for the data")
-    end_date: str = Field(..., description="The end date for the data")
+class RetrieveEnergyDataRequest(BaseModel):
+    respondent: str
+    category: EnergyType
+    start_date: str
+    end_date: str
 
 
 class EnergyDataRequest(BaseModel):

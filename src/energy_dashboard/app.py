@@ -9,8 +9,7 @@ from bokeh.embed import components
 from bokeh.models import ColumnDataSource
 from bokeh.models import NumeralTickFormatter, DatetimeTickFormatter, HoverTool, Range1d
 from bokeh.plotting import figure
-from fastapi import APIRouter, Depends, FastAPI, Request, Query, Form
-from fastapi import Body
+from fastapi import APIRouter, Depends, FastAPI, Request, Query, Form, Body
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -18,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from energy_dashboard.database import AsyncSessionLocal, SessionLocal
-from energy_dashboard.models import EnergyDataRequest, StreamChartDataRequest, EnergyData
+from energy_dashboard.models import SeedEnergyDataRequest, RetrieveEnergyDataRequest
 from energy_dashboard.services import EnergyDataService
 from energy_dashboard.utils import TEMPLATES_DIR
 
@@ -54,7 +53,7 @@ def get_db():
 
 # Dependency function to get an instance of EnergyDataService
 def get_energy_service(
-    db: Session = Depends(get_db), async_db: AsyncSession = Depends(get_async_db)
+        db: Session = Depends(get_db), async_db: AsyncSession = Depends(get_async_db)
 ):
     return EnergyDataService(async_db, db, httpx.AsyncClient())
 
@@ -69,7 +68,7 @@ def render_sse_html_chunk(event, chunk, attrs=None):
 
 @app.get("/stream", name="stream", response_class=StreamingResponse)
 async def stream_energy_data(
-    request: Request, service: EnergyDataService = Depends(get_energy_service)
+        request: Request, service: EnergyDataService = Depends(get_energy_service)
 ):
     """
     Stream the energy data as Server-Sent Events (SSE)
@@ -86,15 +85,15 @@ async def stream_energy_data(
 
 @app.post("/trigger-streaming", response_class=HTMLResponse)
 async def trigger_streaming(
-    request: Request,
-    respondent: Annotated[str, Form()],
-    type_name: Annotated[str, Form()],
-    start_date: Annotated[str, Form()],
-    end_date: Annotated[str, Form()],
+        request: Request,
+        respondent: Annotated[str, Form()],
+        category: Annotated[str, Form()],
+        start_date: Annotated[str, Form()],
+        end_date: Annotated[str, Form()],
 ):
     sse_config = dict(
         listener=HX_SSE_LISTENER,
-        path=f"/stream-chart?respondent={respondent}&type_name={type_name}&start_date={start_date}&end_date={end_date}",
+        path=f"/stream-chart?respondent={respondent}&category={category}&start_date={start_date}&end_date={end_date}",
         topics=[CHART_TOPIC, TERMINATE],
     )
     return templates.TemplateResponse(
@@ -104,21 +103,21 @@ async def trigger_streaming(
 
 @app.get("/stream-chart", response_class=StreamingResponse)
 async def energy_stream(
-    service: EnergyDataService = Depends(get_energy_service),
-    respondent: str = Query(None),
-    type_name: str = Query(None),
-    start_date: str = Query(None),
-    end_date: str = Query(None),
+        service: EnergyDataService = Depends(get_energy_service),
+        respondent: str = Query(None),
+        category: str = Query(None),
+        start_date: str = Query(None),
+        end_date: str = Query(None),
 ):
-    if not all([respondent, type_name, start_date, end_date]):
+    if not all([respondent, category, start_date, end_date]):
         return JSONResponse(
             status_code=400,
             content={"message": "All parameters must be provided"},
         )
 
-    params = StreamChartDataRequest(
+    params = RetrieveEnergyDataRequest(
         respondent=respondent,
-        type_name=type_name,
+        category=category,
         start_date=start_date,
         end_date=end_date,
     )
@@ -139,6 +138,7 @@ async def energy_stream(
         return f"{chunk}\n\n".encode("utf-8")
 
     async def streaming_data(chart_params=params):
+        # TODO: Highlight stored chart state for appending buffer data
         chart_state = {
             "x_state": [],
             "y_state": [],
@@ -236,9 +236,9 @@ async def energy_stream(
 
 
 async def buffer_stream(
-    service: EnergyDataService,
-    chart_params: StreamChartDataRequest,
-    row_count=BUFFER_SIZE,
+        service: EnergyDataService,
+        chart_params: RetrieveEnergyDataRequest,
+        row_count=BUFFER_SIZE,
 ) -> AsyncGenerator[List[EnergyData], None]:
     nrgstream = service.stream_all(row_count, chart_params)
     async for energy_data in nrgstream:
@@ -255,8 +255,8 @@ async def index(request: Request):
 
 @app.post("/api/v1/seed-data/")
 async def seed_energy_data(
-    request_body: EnergyDataRequest = Body(...),
-    service: EnergyDataService = Depends(get_energy_service),
+        request_body: EnergyDataRequest = Body(...),
+        service: EnergyDataService = Depends(get_energy_service),
 ):
     return await service.fetch_data(params=request_body.params)
 
