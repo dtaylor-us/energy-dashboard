@@ -9,7 +9,7 @@ from bokeh.models import ColumnDataSource
 from bokeh.models import NumeralTickFormatter, DatetimeTickFormatter, HoverTool, Range1d
 from bokeh.plotting import figure
 
-from energy_dashboard.models import StreamChartDataRequest
+from energy_dashboard.models import RetrieveEnergyDataRequest
 
 
 def create_context(div, script):
@@ -38,7 +38,7 @@ def create_figure(hours):
     return fig
 
 
-def format_figure(fig, params: StreamChartDataRequest):
+def format_figure(fig, params: RetrieveEnergyDataRequest):
     fig.title.align = "left"
     fig.title.text_font_size = "1em"
     fig.yaxis[0].formatter = NumeralTickFormatter(format="0.0a")
@@ -82,7 +82,7 @@ def add_line_and_hover(fig, source):
     return fig
 
 
-def create_chart(chart_state: Dict, params: StreamChartDataRequest):
+def create_chart(chart_state: Dict, params: RetrieveEnergyDataRequest):
     source = prepare_data(chart_state)
     fig = create_figure(chart_state["x_state"])
     fig = format_figure(fig, params)

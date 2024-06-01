@@ -23,6 +23,7 @@ dependencies = [
     "anthropic>=0.28.0",
     "groq>=0.8.0",
     "openai>=1.30.5",
+    "matplotlib>=3.9.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"

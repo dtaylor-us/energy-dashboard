@@ -40,7 +40,7 @@ def gen_select_query(
     ai_client: Instructor, schema, parametre: str, model=LLMModel.GPT4_Omni
 ) -> SqlSelectQuery:
     system_msg = f"""
-    Issue a valid SQL statement based given the following table schema:
+    Issue a valid SQL statement based on the following table schema:
     '''sql
     {schema}
     '''
@@ -62,7 +62,7 @@ async def streaming_gen_select_query(
     ai_client: AsyncInstructor, schema, parametre: str, model=LLMModel.GPT4_Omni
 ) -> SqlSelectQuery:
     system_msg = f"""
-    Issue a valid SQL statement based given the following table schema:
+    Issue a valid SQL statement based on the following table schema:
     '''sql
     {schema}
     '''

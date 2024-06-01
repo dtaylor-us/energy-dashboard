@@ -13,8 +13,8 @@ from sqlalchemy.orm import Session
 
 from energy_dashboard.database import AsyncSessionLocal, SessionLocal
 from energy_dashboard.models import (
-    EnergyDataRequest,
-    StreamChartDataRequest,
+    RetrieveEnergyDataRequest,
+    SeedEnergyDataRequest,
     EnergyData,
     EnergyType,
 )
@@ -73,6 +73,20 @@ def render_sse_html_chunk(event, chunk, attrs=None):
     tmpl = templates.get_template("partials/streaming_chunk.jinja2")
     html_chunk = tmpl.render(event=event, chunk=chunk, attrs=attrs)
     return html_chunk
+
+
+@app.get("/stream", name="stream", response_class=StreamingResponse)
+async def stream_energy_data(
+    request: Request, service: EnergyDataService = Depends(get_energy_service)
+):
+    sse_config = dict(
+        listener=HX_SSE_LISTENER,
+        path=f"/instruct-stream-chart?prompt={prompt}",
+        topics=[CHART_TOPIC, TERMINATE],
+    )
+    return templates.TemplateResponse(
+        "instruct.jinja2", {"request": request, "sse_config": sse_config}
+    )
 
 
 @app.post("/intruct-trigger-streaming", response_class=HTMLResponse)
@@ -164,7 +178,7 @@ async def energy_stream(
             content={"message": "All parameters must be provided"},
         )
 
-    params = StreamChartDataRequest(
+    params = RetrieveEnergyDataRequest(
         respondent=respondent,
         type_name=EnergyType(type_name),
         start_date=start_date,
@@ -172,6 +186,7 @@ async def energy_stream(
     )
 
     async def streaming_data(chart_params=params):
+        # TODO: Highlight stored chart state for appending buffer data
         chart_state = {
             "x_state": [],
             "y_state": [],
@@ -213,9 +228,9 @@ def render_chunk(event: str, context: Dict, attrs: Dict):
 
 async def buffer_stream(
     service: EnergyDataService,
-    chart_params: StreamChartDataRequest,
+    chart_params: RetrieveEnergyDataRequest,
     row_count=BUFFER_SIZE,
-) -> AsyncGenerator[List[EnergyData], None]:
+) -> AsyncGenerator[List[RetrieveEnergyDataRequest], None]:
     nrgstream = service.stream_all(chart_params, row_count=row_count)
     async for energy_data in nrgstream:
         for data in energy_data:
@@ -236,7 +251,7 @@ async def index(request: Request):
 
 @app.post("/api/v1/seed-data/")
 async def seed_energy_data(
-    request_body: EnergyDataRequest = Body(...),
+    request_body: SeedEnergyDataRequest = Body(...),
     service: EnergyDataService = Depends(get_energy_service),
 ):
     return await service.fetch_data(params=request_body.params)

@@ -1,5 +1,6 @@
 
 {% macro sse_stream(sse_config) %}
+    {#  TODO: Highlight the importance of the ID, The Extension, the SSE Connect attr, and sse-swap attr  #}
     <div id="{{ sse_config.listener }}" hx-ext="sse" sse-connect="{{ sse_config.path }}" sse-swap="{{ sse_config.topics | join(',') }}">
     </div>
 {% endmacro %}

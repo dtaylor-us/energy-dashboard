@@ -1,4 +1,3 @@
-import copy
 import logging
 import os
 from datetime import datetime
@@ -6,15 +5,17 @@ from typing import AsyncGenerator
 
 import httpx
 from dotenv import load_dotenv
+from energy_dashboard.database import (
+    EnergyDataTable,
+    database,
+    get_energy_data_schema,
+)
+from energy_dashboard.llm import gen_async_client, streaming_gen_select_query
+from energy_dashboard.models import EnergyData, RetrieveEnergyDataRequest, SqlSelectQuery
+from energy_dashboard.utils import URLBuilder
 from sqlalchemy import insert, select, text, Row, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
-from sqlalchemy.sql.ddl import CreateTable
-
-from .database import EnergyDataTable, database, engine, get_energy_data_schema
-from .models import EnergyData, StreamChartDataRequest, SqlSelectQuery
-from .utils import URLBuilder
-from .llm import gen_async_client, streaming_gen_select_query
 
 load_dotenv()
 
@@ -84,17 +85,18 @@ class EnergyDataService:
 
         return data
 
-    def list_all(self):
+    async def list_all(self, count=None, params=None):
         """
-        Return all rows from the EnergyDataTable
-        Filter out the US48 respondent
+        Return rows from the EnergyDataTable based on the provided parameters.
+        Filter out the US48 respondent by default.
         """
-        return (
-            self.db.query(EnergyDataTable)
-            .filter(EnergyDataTable.respondent != "US48")
-            .order_by(EnergyDataTable.respondent, EnergyDataTable.period)
-            .all()
-        )
+        # Prepare the SQL statement
+        stmt = await self.prepare_stmt(params, count)
+
+        # Execute the query and return the result
+        result = await self.async_db.execute(stmt)
+        rows = result.scalars().all()
+        return [self.row_to_dict(row) for row in rows]
 
     async def stream_all_from_prompt(
         self, prompt: str, row_count=10
@@ -118,9 +120,11 @@ class EnergyDataService:
         yield None
 
     async def stream_all(
-        self, chart_params: StreamChartDataRequest, row_count=10
+        self, chart_params: RetrieveEnergyDataRequest, row_count=10
     ) -> AsyncGenerator[EnergyData, None]:
         stmt = self.prepare_stmt(chart_params, row_count)
+        stmt.execution_options(stream_results=True, max_row_buffer=row_count)
+
         results_stream = await self.async_db.stream(stmt)
         buffer = []
         async for partition in results_stream.partitions(row_count):
@@ -136,7 +140,7 @@ class EnergyDataService:
             yield buffer
 
     @staticmethod
-    def prepare_stmt(params: StreamChartDataRequest, row_count):
+    def prepare_stmt(params: RetrieveEnergyDataRequest, row_count):
         if params:
             # Convert start_date and end_date from string to datetime
             try:
@@ -159,15 +163,14 @@ class EnergyDataService:
                     )
                 )
                 .order_by(EnergyDataTable.respondent, EnergyDataTable.period)
-                .execution_options(stream_results=True, max_row_buffer=row_count)
             )
         else:
             stmt = (
                 select(EnergyDataTable)
                 .filter(EnergyDataTable.respondent != "US48")
                 .order_by(EnergyDataTable.respondent, EnergyDataTable.period)
-                .execution_options(stream_results=True, max_row_buffer=row_count)
             )
+
         return stmt
 
     @staticmethod
