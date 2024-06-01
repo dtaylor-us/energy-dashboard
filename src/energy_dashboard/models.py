@@ -5,6 +5,17 @@ from typing import Dict, Any
 from pydantic import BaseModel, Field
 
 
+class LLMModel(str, Enum):
+    Claude3 = "claude-3-opus-20240229"
+    GPT4_Omni = "gpt-4o"
+    LLAMA3 = "llama3-70b-8192"
+
+
+class SqlSelectQuery(BaseModel):
+    select_stmt: str = Field(..., description="The select statement for the query")
+    explain_stmt: str = Field(..., description="The explain statement for the query")
+
+
 class EnergyData(BaseModel):
     id: int = Field(..., description="The unique identifier for the data entry")
     period: datetime = Field(..., description="The period of the data entry")

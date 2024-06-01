@@ -18,9 +18,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from energy_dashboard.database import AsyncSessionLocal, SessionLocal
-from energy_dashboard.models import EnergyDataRequest, StreamChartDataRequest, EnergyData
+from energy_dashboard.models import (
+    EnergyDataRequest,
+    StreamChartDataRequest,
+    EnergyData,
+    EnergyType,
+)
 from energy_dashboard.services import EnergyDataService
 from energy_dashboard.utils import TEMPLATES_DIR
+
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 HX_SSE_LISTENER = "hx-sse-listener"
 CHART_TOPIC = "chart"
@@ -67,21 +77,19 @@ def render_sse_html_chunk(event, chunk, attrs=None):
     return html_chunk
 
 
-@app.get("/stream", name="stream", response_class=StreamingResponse)
-async def stream_energy_data(
-    request: Request, service: EnergyDataService = Depends(get_energy_service)
+@app.post("/intruct-trigger-streaming", response_class=HTMLResponse)
+async def instruct_trigger_streaming(
+    request: Request,
+    prompt: Annotated[str, Form()],
 ):
-    """
-    Stream the energy data as Server-Sent Events (SSE)
-    """
-
-    async def streaming_data():
-        strm = service.stream_all()
-        async for data in strm:
-            yield f"data: {data.model_dump_json(indent=4)}\n\n"
-            await asyncio.sleep(1)
-
-    return StreamingResponse(streaming_data(), media_type="text/event-stream")
+    sse_config = dict(
+        listener=HX_SSE_LISTENER,
+        path=f"/instruct-stream-chart?prompt={prompt}",
+        topics=[CHART_TOPIC, TERMINATE],
+    )
+    return templates.TemplateResponse(
+        "instruct.jinja2", {"request": request, "sse_config": sse_config}
+    )
 
 
 @app.post("/trigger-streaming", response_class=HTMLResponse)
@@ -102,6 +110,47 @@ async def trigger_streaming(
     )
 
 
+@app.get("/instruct-stream-chart", response_class=StreamingResponse)
+async def instruct_stream_chart(
+    service: EnergyDataService = Depends(get_energy_service),
+    prompt: str = Query(None),
+):
+    if not prompt:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Prompt must be provided"},
+        )
+
+    def render_chunk(event: str, chunk: str, attrs: Dict):
+        chunk = render_sse_html_chunk(
+            event,
+            chunk,
+            attrs=attrs,
+        )
+        return f"{chunk}\n\n".encode("utf-8")
+
+    async def streaming_data(prompt: str):
+        nrgstrm = service.stream_all_from_prompt(prompt)
+        async for energy_data in nrgstrm:
+            log.info(f"Sending {energy_data} to client...")
+            if energy_data is None:
+                yield render_chunk(
+                    TERMINATE,
+                    {},
+                    attrs={"id": HX_SSE_LISTENER, "hx-swap-oob": "true"},
+                )
+                await nrgstrm.aclose()
+            else:
+                yield render_chunk(
+                    CHART_TOPIC,
+                    energy_data,
+                    attrs={"id": "linechart", "hx-swap-oob": "true"},
+                )
+                await asyncio.sleep(2)
+
+    return StreamingResponse(streaming_data(prompt), media_type="text/event-stream")
+
+
 @app.get("/stream-chart", response_class=StreamingResponse)
 async def energy_stream(
     service: EnergyDataService = Depends(get_energy_service),
@@ -118,7 +167,7 @@ async def energy_stream(
 
     params = StreamChartDataRequest(
         respondent=respondent,
-        type_name=type_name,
+        type_name=EnergyType(type_name),
         start_date=start_date,
         end_date=end_date,
     )
@@ -146,14 +195,14 @@ async def energy_stream(
 
         nrgstrm = buffer_stream(service, chart_params)
         async for energy_data in nrgstrm:
-            print(f"Sending {energy_data} to client...")
+            log.info(f"Sending {energy_data} to client...")
             if energy_data is None:
                 yield render_chunk(
                     TERMINATE,
-                    None,
+                    {},
                     attrs={"id": HX_SSE_LISTENER, "hx-swap-oob": "true"},
                 )
-                nrgstrm.aclose()
+                await nrgstrm.aclose()
             else:
                 chart_state["y_state"].append(energy_data.value)
                 chart_state["x_state"].append(energy_data.period)
@@ -240,11 +289,16 @@ async def buffer_stream(
     chart_params: StreamChartDataRequest,
     row_count=BUFFER_SIZE,
 ) -> AsyncGenerator[List[EnergyData], None]:
-    nrgstream = service.stream_all(row_count, chart_params)
+    nrgstream = service.stream_all(chart_params, row_count=row_count)
     async for energy_data in nrgstream:
         for data in energy_data:
             yield data
     yield None
+
+
+@app.get("/instruct", name="instruct")
+async def instruct(request: Request):
+    return templates.TemplateResponse("instruct.jinja2", {"request": request})
 
 
 @app.get("/", name="index")

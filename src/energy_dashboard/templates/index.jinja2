@@ -10,7 +10,7 @@
             {{ sse_stream(sse_config) }}
         {% endif %}
 
-        <form action="/trigger-streaming" method="POST" class="mt-4">
+        <form action="{{ url_for('trigger_streaming') }}" method="POST" class="mt-4">
             <div class="row">
                 <div class="col">
                     <label for="respondent" class="form-label">Respondent</label>
