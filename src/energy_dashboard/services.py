@@ -11,7 +11,11 @@ from energy_dashboard.database import (
     get_energy_data_schema,
 )
 from energy_dashboard.llm import gen_async_client, streaming_gen_select_query
-from energy_dashboard.models import EnergyData, RetrieveEnergyDataRequest, SqlSelectQuery
+from energy_dashboard.models import (
+    EnergyData,
+    RetrieveEnergyDataRequest,
+    SqlSelectQuery,
+)
 from energy_dashboard.utils import URLBuilder
 from sqlalchemy import insert, select, text, Row, and_
 from sqlalchemy.ext.asyncio import AsyncSession

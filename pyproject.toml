@@ -39,7 +39,8 @@ dev-dependencies = [
 ]
 
 [tool.rye.scripts]
-dev = "uvicorn energy_dashboard.routes:app --reload"
+dev = "uvicorn energy_dashboard.app:app --reload"
+fast_api = "uvicorn energy_dashboard.fast_api:app --reload"
 
 [tool.hatch.metadata]
 allow-direct-references = true
